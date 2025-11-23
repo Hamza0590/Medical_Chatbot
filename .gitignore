@@ -1,1 +1,5 @@
 Medical_Chatbot.egg-info
+.env
+*.pyc
+__pycache__/
+*.egg-info/
