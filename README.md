@@ -1,24 +1,37 @@
 # Medical Chatbot 🏥🤖
 
-A medical chatbot powered by LangChain, Pinecone, and Groq's LLaMA 3.3 70B model. This chatbot can answer medical questions based on a medical book PDF using RAG (Retrieval Augmented Generation).
+An advanced medical chatbot powered by LangChain, Pinecone, and Groq's LLaMA 3.3 70B model. This chatbot uses **Multi-Query RAG with Reciprocal Rank Fusion** to provide highly accurate medical information from PDF documents.
 
 ## Features
 
+### Core Functionality
 - 📚 PDF document processing and chunking
 - 🔍 Semantic search using Pinecone vector database
 - 🤖 AI-powered responses using Groq's LLaMA 3.3 70B
-- 💬 Clean web interface built with Flask
-- ⚡ Fast and accurate medical information retrieval
-- 🧠 **Conversation context** - Remembers chat history for contextual responses
-- 🗑️ Clear chat functionality to reset conversations
+- 💬 Modern glassmorphism UI with animated gradients
+- ⚡ Instant app startup with background model loading
+
+### Advanced RAG Pipeline
+- 🎯 **Multi-Query Retrieval** - Generates 5 query variations for comprehensive search
+- 🏆 **Reciprocal Rank Fusion (RRF)** - Re-ranks results for optimal relevance
+- 📊 **Enhanced Context** - Uses top 6 chunks instead of 5 for better answers
+- 🧠 **Conversation Memory** - Remembers last 3 exchanges for contextual responses
+
+### User Experience
+- 🚀 **Instant Loading** - Frontend appears in <1 second with background initialization
+- 💬 **Typing Indicator** - Visual feedback while bot processes queries
+- 🗑️ **Clear Chat** - Reset conversations anytime
+- 📱 **Responsive Design** - Works on desktop and mobile
 
 ## Tech Stack
 
-- **Backend**: Flask
+- **Backend**: Flask with Threading for async initialization
 - **LLM**: Groq (LLaMA 3.3 70B Versatile)
 - **Vector Database**: Pinecone
 - **Embeddings**: HuggingFace (sentence-transformers/all-MiniLM-L6-v2)
 - **Framework**: LangChain
+- **Re-ranking**: Reciprocal Rank Fusion (RRF) algorithm
+- **Frontend**: HTML/CSS/JavaScript with glassmorphism design
 
 ## Setup Instructions
 
@@ -85,7 +98,9 @@ This will:
 python app.py
 ```
 
-The app will be available at: `http://localhost:5000`
+The app will start **instantly** and be available at: `http://localhost:5000`
+
+**Note**: The frontend loads immediately while models initialize in the background (takes ~7-10 seconds). You'll see "Loading models..." change to "Ready to help!" when initialization completes.
 
 ## Project Structure
 
@@ -125,12 +140,29 @@ Medical_Chatbot/
 
 ## How It Works
 
-1. **Document Processing**: The PDF is loaded and split into smaller chunks
+### Indexing Phase (One-time Setup)
+1. **Document Processing**: PDF is loaded and split into smaller chunks
 2. **Embedding Generation**: Each chunk is converted into vector embeddings
 3. **Vector Storage**: Embeddings are stored in Pinecone for fast retrieval
-4. **Query Processing**: User questions are embedded and similar chunks are retrieved
-5. **Context Building**: Combines retrieved documents with conversation history (last 3 exchanges)
-6. **Response Generation**: Retrieved context and chat history are sent to LLaMA 3.3 70B to generate contextual answers
+
+### Query Phase (Advanced Multi-Query RAG)
+1. **Query Expansion**: User query is transformed into 5 variations using LLM
+   - Example: "What is diabetes?" → generates medical terminology variations
+2. **Multi-Retrieval**: Each query variation retrieves top 5 documents from Pinecone
+   - Total pool: ~20-25 documents retrieved
+3. **Re-ranking with RRF**: Documents are scored using Reciprocal Rank Fusion
+   - Formula: `score = Σ(1 / (60 + rank))` across all queries
+   - Documents appearing in multiple queries rank higher
+4. **Top-K Selection**: Best 6 chunks selected based on RRF scores
+5. **Context Building**: Combines:
+   - Top 6 re-ranked documents
+   - Last 3 conversation exchanges (6 messages)
+6. **Response Generation**: LLaMA 3.3 70B generates answer using enriched context
+
+### Background Initialization
+- **Thread-based Loading**: Models load in background while UI appears instantly
+- **Status Monitoring**: Frontend polls `/status` endpoint every 2 seconds
+- **Graceful Waiting**: System waits up to 30 seconds if query sent before ready
 
 ## Important Notes
 
@@ -148,7 +180,8 @@ Medical_Chatbot/
 - **Single User Sessions**: Each browser session maintains separate conversation history; no cross-session memory.
 - **No Persistent Storage**: Conversations are not saved to a database and cannot be retrieved after clearing or session expiration.
 - **Embedding Model Constraints**: Uses a lightweight embedding model (all-MiniLM-L6-v2) which may not capture all semantic nuances.
-- **Retrieval Accuracy**: Returns top 5 most similar chunks, which may not always include all relevant information.
+- **Retrieval Accuracy**: Uses multi-query retrieval with 6 chunks, but may still miss relevant information in edge cases.
+- **Query Expansion Cost**: Generates 5 query variations per request, increasing API costs and latency (~3-5 seconds).
 
 ### Medical & Content Limitations
 
