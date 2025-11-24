@@ -1,0 +1,29 @@
+# Core dependencies
+langchain==0.3.26
+langchain-community==0.3.26
+langchain-core==1.1.0
+langchain-text-splitters==0.3.11
+langchain-pinecone==0.2.8
+langchain-openai==0.3.24
+langchain-groq==1.0.1
+langchain-huggingface
+
+# Web framework
+flask==3.1.1
+gunicorn==21.2.0
+
+# Vector database
+pinecone-client==7.3.0
+
+# Embeddings
+sentence-transformers==4.1.0
+
+# PDF processing
+pypdf==5.6.1
+
+# Environment variables
+python-dotenv==1.1.0
+
+# LLM providers
+groq==0.36.0
+openai==1.109.1

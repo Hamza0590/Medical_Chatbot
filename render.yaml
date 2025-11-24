@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: medical-chatbot
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --timeout 120 --workers 2
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: medical-chatbot

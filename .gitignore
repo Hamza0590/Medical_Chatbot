@@ -1,5 +1,12 @@
-Medical_Chatbot.egg-info
-.env
 *.pyc
 __pycache__/
+.env
+.venv
+venv/
+env/
 *.egg-info/
+.DS_Store
+.vercel
+*.log
+data/*.pdf
+research/
