@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
 from pinecone import ServerlessSpec
-from src.helper import download_embeddings_model
+from src.helper import load_pdf, filter_to_minimal_docs, text_split, download_embeddings_model
 import os
+import traceback
 from pinecone import Pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain_groq import ChatGroq
@@ -36,25 +37,49 @@ initialization_lock = threading.Lock()
 def initialize_models():
     global embeddings_model, docsearch, retriever, initialization_complete
 
+
     try:
 
         embeddings_model = download_embeddings_model()
-        docsearch = PineconeVectorStore.from_existing_index(
-            index_name=index_name,
-            embedding=embeddings_model
-        )
+        pc = Pinecone(api_key=pinecone_api_key)
+        if not pc.has_index(index_name):
+
+            documents = load_pdf()
+            minimal_docs = filter_to_minimal_docs(documents)
+            text_chunks = text_split(minimal_docs)
+
+            pc.create_index(
+                name=index_name,
+                dimension=384,  # all-MiniLM-L6-v2 dimension
+                metric="cosine",
+                spec=ServerlessSpec(cloud="aws", region="us-east-1")
+            )
+
+            docsearch = PineconeVectorStore.from_documents(
+                documents=text_chunks,
+                embedding=embeddings_model,
+                index_name=index_name
+            )           
+        else:
+            docsearch = PineconeVectorStore.from_existing_index(
+                index_name=index_name,
+                embedding=embeddings_model
+            )
+
         retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 5})
-        
+
         with initialization_lock:
             initialization_complete = True
         
     except Exception as e:
-
+        traceback.print_exc()
+        
         with initialization_lock:
             initialization_complete = False
 
 
-def wait_for_initialization(timeout=30):
+
+def wait_for_initialization(timeout=10):
 
     start_time = time.time()
     while not initialization_complete:
@@ -96,18 +121,6 @@ def generate_query_variations(original_query: str, num_variations: int = 5) -> L
     return all_queries
 
 
-def multi_query_retrieval(queries: List[str], retriever, k_per_query: int = 5) -> List[Tuple[any, float]]:
-    all_docs = []
-    
-    for query in queries:
-        docs = retriever.invoke(query)
-        
-        for doc in docs:
-            all_docs.append(doc)
-    
-    return all_docs
-
-
 def reciprocal_rank_fusion(doc_lists: List[List[any]], k: int = 60) -> List[Tuple[any, float]]:
     """
     Re-rank documents using Reciprocal Rank Fusion (RRF).
@@ -135,7 +148,7 @@ def reciprocal_rank_fusion(doc_lists: List[List[any]], k: int = 60) -> List[Tupl
 
 
 def advanced_retrieval(query: str, retriever, num_variations: int = 3, top_k: int = 6) -> str:
-
+    print("top_k", top_k, "num_variations", num_variations)
     query_variations = generate_query_variations(query, num_variations)
     doc_lists = []
     for q in query_variations:
@@ -159,9 +172,11 @@ def generation(query, retriever, chat_history=None, use_multi_query=True):
 
 
     if use_multi_query:
-        context = advanced_retrieval(query, retriever, num_variations=3, top_k=6)
+        start = time.time()
+        context = advanced_retrieval(query, retriever, num_variations=3, top_k=3)
+        end = time.time()
+        print(f"Advanced retrieval took {end - start:.2f} seconds")
     else:
-
         docs = retriever.invoke(query)
         context = "\n\n".join(d.page_content for d in docs)
 
