@@ -60,18 +60,54 @@
 	</div>
 
 	<script>
+		let systemInitialized = false;
+		let statusCheckInterval;
+
+		// Check initialization status
+		function checkStatus() {
+			$.ajax({
+				type: "GET",
+				url: "/status",
+			}).done(function (data) {
+				if (data.initialized) {
+					systemInitialized = true;
+					clearInterval(statusCheckInterval);
+					// Update UI to show ready state
+					$(".user_info p").text("Ready to help!");
+				} else {
+					$(".user_info p").text("Loading models...");
+				}
+			});
+		}
+
 		$(document).ready(function () {
+			// Check status immediately and then every 2 seconds
+			checkStatus();
+			statusCheckInterval = setInterval(checkStatus, 2000);
+
 			$("#messageArea").on("submit", function (event) {
+				event.preventDefault();
+
 				const date = new Date();
 				const hour = date.getHours();
 				const minute = date.getMinutes();
 				const str_time = hour + ":" + minute;
 				var rawText = $("#text").val();
 
+				if (!rawText.trim()) {
+					return; // Don't send empty messages
+				}
+
 				var userHtml = '<div class="d-flex justify-content-end mb-4"><div class="msg_cotainer_send">' + rawText + '<span class="msg_time_send">' + str_time + '</span></div><div class="img_cont_msg"><img src="https://i.ibb.co/d5b84Xw/Untitled-design.png" class="rounded-circle user_img_msg"></div></div>';
 
 				$("#text").val("");
 				$("#messageFormeight").append(userHtml);
+				$("#messageFormeight").scrollTop($("#messageFormeight")[0].scrollHeight);
+
+				// Show typing indicator
+				var typingHtml = '<div class="d-flex justify-content-start mb-4" id="typing-indicator"><div class="img_cont_msg"><img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer"><div class="typing-indicator"><span></span><span></span><span></span></div></div></div>';
+				$("#messageFormeight").append(typingHtml);
+				$("#messageFormeight").scrollTop($("#messageFormeight")[0].scrollHeight);
 
 				$.ajax({
 					data: {
@@ -80,10 +116,24 @@
 					type: "POST",
 					url: "/get",
 				}).done(function (data) {
+					// Remove typing indicator
+					$("#typing-indicator").remove();
+
 					var botHtml = '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' + data + '<span class="msg_time">' + str_time + '</span></div></div>';
 					$("#messageFormeight").append($.parseHTML(botHtml));
+					$("#messageFormeight").scrollTop($("#messageFormeight")[0].scrollHeight);
+				}).fail(function (xhr, status, error) {
+					// Remove typing indicator
+					$("#typing-indicator").remove();
+
+					var errorMsg = "Sorry, I'm still initializing. Please wait a moment and try again.";
+					if (xhr.status === 503) {
+						errorMsg = "System is still loading. Please wait a few seconds and try again.";
+					}
+					var errorHtml = '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer" style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);">' + errorMsg + '<span class="msg_time">' + str_time + '</span></div></div>';
+					$("#messageFormeight").append(errorHtml);
+					$("#messageFormeight").scrollTop($("#messageFormeight")[0].scrollHeight);
 				});
-				event.preventDefault();
 			});
 
 			// Clear chat functionality
