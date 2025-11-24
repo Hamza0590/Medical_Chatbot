@@ -12,8 +12,8 @@ langchain-huggingface
 flask==3.1.1
 gunicorn==21.2.0
 
-# Vector database
-pinecone-client==7.3.0
+# Vector database - FIXED VERSION
+pinecone-client==5.0.1
 
 # Embeddings
 sentence-transformers==4.1.0
