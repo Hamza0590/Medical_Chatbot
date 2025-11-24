@@ -33,8 +33,8 @@ docsearch = PineconeVectorStore.from_existing_index(
 retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
 
-def generation(query, retriever):
-    """Generate a response using the medical chatbot"""
+def generation(query, retriever, chat_history=None):
+    """Generate a response using the medical chatbot with conversation context"""
     llm = ChatGroq(
         model_name="llama-3.3-70b-versatile",
         temperature=0.5
@@ -44,13 +44,21 @@ def generation(query, retriever):
     docs = retriever.invoke(query)
     context = "\n\n".join(d.page_content for d in docs)
 
-    # Create prompt templates
+    # Build chat history string
+    history_text = ""
+    if chat_history:
+        for msg in chat_history[-6:]:  # Keep last 3 exchanges (6 messages)
+            role = "User" if msg['role'] == 'user' else "Assistant"
+            history_text += f"{role}: {msg['content']}\n"
+    
+    # Create prompt templates with chat history
     system_prompt = SystemMessagePromptTemplate.from_template(
         "You are a helpful medical assistant. "
-        "Based only on the context below, answer the question concisely and clearly. "
-        "If you do not have enough information, say so. Use three sentence maximum "
+        "Based on the context below and the conversation history, answer the question concisely and clearly. "
+        "If you do not have enough information, say 'Please ask a different question'. Use three sentence maximum "
         "and keep the answer concise.\n\n"
-        "{context}"
+        "Context from medical documents:\n{context}\n\n"
+        "Conversation History:\n{history}"
     )
 
     user_prompt = HumanMessagePromptTemplate.from_template(
@@ -62,6 +70,7 @@ def generation(query, retriever):
     # Format and invoke
     final_messages = prompt.format_messages(
         context=context,
+        history=history_text if history_text else "No previous conversation.",
         query=query
     )
 
@@ -71,10 +80,35 @@ def generation(query, retriever):
 
 @app.route('/get', methods=['POST'])
 def chat():
-    """Handle chat requests"""
+    """Handle chat requests with conversation history"""
     query = request.form['msg']
-    response = generation(query, retriever)
+    
+    # Initialize chat history in session if not exists
+    if 'chat_history' not in session:
+        session['chat_history'] = []
+    
+    # Get response with chat history
+    response = generation(query, retriever, session['chat_history'])
+    
+    # Store user message and bot response in session
+    session['chat_history'].append({'role': 'user', 'content': query})
+    session['chat_history'].append({'role': 'assistant', 'content': response})
+    
+    # Keep only last 20 messages to prevent session from growing too large
+    if len(session['chat_history']) > 20:
+        session['chat_history'] = session['chat_history'][-20:]
+    
+    session.modified = True
+    
     return str(response)
+
+
+@app.route('/clear', methods=['POST'])
+def clear_chat():
+    """Clear chat history"""
+    session['chat_history'] = []
+    session.modified = True
+    return jsonify({'status': 'success', 'message': 'Chat history cleared'})
 
 
 @app.route('/')

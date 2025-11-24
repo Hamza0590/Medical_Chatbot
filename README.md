@@ -9,6 +9,8 @@ A medical chatbot powered by LangChain, Pinecone, and Groq's LLaMA 3.3 70B model
 - 🤖 AI-powered responses using Groq's LLaMA 3.3 70B
 - 💬 Clean web interface built with Flask
 - ⚡ Fast and accurate medical information retrieval
+- 🧠 **Conversation context** - Remembers chat history for contextual responses
+- 🗑️ Clear chat functionality to reset conversations
 
 ## Tech Stack
 
@@ -111,6 +113,8 @@ Medical_Chatbot/
 1. Open your browser and navigate to `http://localhost:5000`
 2. Type your medical question in the chat interface
 3. The chatbot will retrieve relevant information from the medical book and provide an answer
+4. Ask follow-up questions - the bot remembers your conversation context
+5. Click the "Clear" button to reset the conversation and start fresh
 
 ## Example Questions
 
@@ -125,13 +129,58 @@ Medical_Chatbot/
 2. **Embedding Generation**: Each chunk is converted into vector embeddings
 3. **Vector Storage**: Embeddings are stored in Pinecone for fast retrieval
 4. **Query Processing**: User questions are embedded and similar chunks are retrieved
-5. **Response Generation**: Retrieved context is sent to LLaMA 3.3 70B to generate accurate answers
+5. **Context Building**: Combines retrieved documents with conversation history (last 3 exchanges)
+6. **Response Generation**: Retrieved context and chat history are sent to LLaMA 3.3 70B to generate contextual answers
 
 ## Important Notes
 
 ⚠️ **Security**: Never commit your `.env` file to version control. It contains sensitive API keys.
 
 ⚠️ **Disclaimer**: This chatbot is for educational purposes only. Always consult qualified healthcare professionals for medical advice.
+
+## Limitations
+
+### Technical Limitations
+
+- **Knowledge Base Scope**: Responses are limited to the content of the uploaded medical PDF. The chatbot cannot access information beyond this document.
+- **Context Window**: Only the last 3 conversation exchanges (6 messages) are included in the context to avoid token limits.
+- **Session-Based Memory**: Chat history is stored in browser sessions and will be lost when the session expires or browser is closed.
+- **Single User Sessions**: Each browser session maintains separate conversation history; no cross-session memory.
+- **No Persistent Storage**: Conversations are not saved to a database and cannot be retrieved after clearing or session expiration.
+- **Embedding Model Constraints**: Uses a lightweight embedding model (all-MiniLM-L6-v2) which may not capture all semantic nuances.
+- **Retrieval Accuracy**: Returns top 5 most similar chunks, which may not always include all relevant information.
+
+### Medical & Content Limitations
+
+- **Not a Medical Professional**: This is an AI chatbot, not a licensed healthcare provider. It cannot diagnose, treat, or provide personalized medical advice.
+- **Information Currency**: The chatbot's knowledge is limited to the publication date of the source PDF and does not include recent medical research or updates.
+- **No Emergency Response**: Cannot handle medical emergencies. Always call emergency services (911 or local equivalent) for urgent medical situations.
+- **Lack of Context**: Cannot consider individual patient history, symptoms, medications, or personal health factors.
+- **Potential Inaccuracies**: AI-generated responses may contain errors or misinterpretations. Always verify information with qualified healthcare professionals.
+- **No Visual Diagnosis**: Cannot analyze images, lab results, X-rays, or other diagnostic materials.
+- **Limited Scope**: May not cover all medical conditions, treatments, or specialties depending on the source document.
+
+### Usage Limitations
+
+- **Response Length**: Answers are limited to 3 sentences maximum for conciseness, which may oversimplify complex topics.
+- **No Multi-Language Support**: Currently operates in English only.
+- **Internet Required**: Requires active internet connection for API calls to Groq and Pinecone.
+- **API Rate Limits**: Subject to rate limits from Groq and Pinecone APIs.
+- **No Authentication**: No user accounts or personalized experiences.
+- **Single Document**: Can only query one PDF at a time; switching documents requires re-indexing.
+- **Processing Time**: Initial setup (indexing) can take several minutes depending on PDF size.
+
+### Privacy & Security Limitations
+
+- **Data Transmission**: User queries are sent to third-party APIs (Groq, Pinecone).
+- **No Encryption**: Chat history is stored in Flask sessions without additional encryption.
+- **Session Security**: Uses a placeholder secret key that should be changed in production.
+- **No HIPAA Compliance**: Not designed for handling protected health information (PHI).
+
+### Recommendations
+
+✅ **DO USE** for educational purposes, general medical information, and learning about medical concepts.  
+❌ **DO NOT USE** for diagnosing conditions, making treatment decisions, or replacing professional medical consultation.
 
 ## License
 
